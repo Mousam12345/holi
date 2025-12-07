@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Indo — 리틀 인도 스토리 </title>
+  <style>
+    :root{
+      --bg:#fffaf8;
+      --card:#ffffff;
+      --primary:#6a9fd8;
+      --accent:#ffd6a5;
+      --muted:#666;
+      --soft:#f0eefc;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,'Segoe UI',Noto Sans KR,Arial;}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#f7fbff 60%);display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px;color:#1b1b1b;}
+    .wrap{width:100%;max-width:980px;background:var(--card);border-radius:18px;box-shadow:0 12px 36px rgba(20,30,60,0.12);overflow:hidden;display:grid;grid-template-columns: 1fr 350px;gap:0;}
+    .game-area{padding:18px;background:linear-gradient(180deg,#fff,#f7fbff);display:flex;flex-direction:column;align-items:center;gap:12px;}
+    header.app-header{display:flex;align-items:center;justify-content:space-between;width:100%;gap:12px;}
+    .title{display:flex;gap:12px;align-items:center;}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#ffd0b0);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;box-shadow:0 6px 18px rgba(255,214,165,0.18);}
+    h1{font-size:16px;margin:0}
+    p.subtitle{margin:0;color:var(--muted);font-size:13px}
+    .canvas-card{background:linear-gradient(180deg, #ffffff,#fcf8ff);border-radius:12px;padding:10px;box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);}
+    canvas{background:linear-gradient(180deg,#fff,#fff7f4);border-radius:10px;display:block;max-width:100%;height:auto;touch-action: none;box-shadow: 0 10px 30px rgba(50,60,90,0.06);}
+    .panel{padding:20px;background:linear-gradient(180deg,#fff,#fbfdff);border-left:1px solid rgba(10,20,40,0.03);}
+    .panel h2{margin:0 0 8px 0;font-size:18px;color:var(--primary)}
+    .meter{height:18px;border-radius:12px;background:#f0f0f0;overflow:hidden;margin:10px 0;}
+    .meter > i{display:block;height:100%;background:linear-gradient(90deg,#ffd6a5,#6a9fd8);width:0%}
+    .stat{font-size:13px;color:var(--muted);margin:8px 0}
+    .controls{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:none;padding:10px 12px;border-radius:12px;background:var(--primary);color:white;font-weight:600;cursor:pointer;box-shadow:0 8px 18px rgba(106,159,216,0.15);}
+    .btn.secondary{background:#fff;border:1px solid #eef2ff;color:var(--primary);box-shadow:none}
+    .credits{margin-top:18px;font-size:13px;color:var(--muted);line-height:1.4}
+    .kbd{display:inline-block;background:#fff;padding:6px 8px;border-radius:8px;border:1px solid #eee;margin-left:6px;font-weight:600}
+    .touch-controls{display:none;gap:8px;margin-top:12px;justify-content:center;align-items:center;}
+    .touch-controls .tbtn{width:58px;height:58px;border-radius:12px;border:none;background:linear-gradient(180deg,#fff,#f7f9ff);box-shadow:0 8px 20px rgba(10,20,60,0.06);font-size:20px;}
+    .audio-controls{display:flex;gap:8px;align-items:center;margin-top:10px}
+    .small{font-size:13px;color:var(--muted)}
+    @media (max-width:900px){.wrap{grid-template-columns: 1fr;} .panel{order:2;border-left:0;border-top:1px solid rgba(10,20,40,0.03)} .touch-controls{display:flex}}
+  </style>
+</head>
+<body>
+  <div class="wrap" role="application" aria-label="Little India Story game">
+    <div class="game-area">
+      <header class="app-header">
+        <div class="title">
+          <div class="logo">인도</div>
+          <div>
+            <h1>Little India Story</h1>
+            <p class="subtitle">미나와 함께 마을에 색을 되찾아 주세요 — 화살표로 이동</p>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:12px;color:#888">레벨 <strong id="level">1</strong></div>
+          <div style="font-size:12px;color:#888">점수 <strong id="score">0</strong></div>
+        </div>
+      </header>
+
+      <div class="canvas-card">
+        <canvas id="gameCanvas" width="800" height="520"></canvas>
+      </div>
+
+      <div class="touch-controls" id="touchControls" aria-hidden="true">
+        <button class="tbtn" data-dir="up">▲</button>
+        <div style="display:flex;gap:8px">
+          <button class="tbtn" data-dir="left">◀</button>
+          <button class="tbtn" data-dir="down">▼</button>
+          <button class="tbtn" data-dir="right">▶</button>
+        </div>
+      </div>
+
+    </div>
+
+    <aside class="panel" aria-label="Game info">
+      <h2>마을 밝기 (Village Brightness)</h2>
+      <div class="meter" aria-hidden="true"><i id="meterFill" style="width:0%"></i></div>
+      <div class="stat">남은 색 가루: <strong id="remaining">10</strong></div>
+
+      <div style="margin-top:12px;">
+        <h2 style="font-size:15px;margin-bottom:6px">오디오 (Audio)</h2>
+        <div class="audio-controls">
+          <button class="btn" id="btnStartBgm">시작 ▶</button>
+          <button class="btn secondary" id="btnMute">음소거</button>
+        </div>
+        <div style="margin-top:8px">
+          <label class="small">볼륨</label>
+          <input id="volume" type="range" min="0" max="1" step="0.01" value="0.65" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <h2 style="font-size:15px;margin-bottom:6px">Controls (조작)</h2>
+        <div class="stat">이동: <span class="kbd">← ↑ → ↓</span> 또는 <span class="kbd">W A S D</span></div>
+        <div class="stat">모바일: 화면 아래 버튼 사용</div>
+      </div>
+
+      <div class="controls">
+        <button class="btn" id="btnRestart">다시 시작</button>
+        <button class="btn secondary" id="btnNext">다음 레벨</button>
+      </div>
+
+      <div class="credits">
+        <strong>게임 설명</strong><br>
+        미나는 마을 곳곳에 숨겨진 색 가루를 주워 마을을 복원해야 합니다. <br><br>
+        만든 사람: Mousam · Prototype · Korean-Indian cute style
+      </div>
+    </aside>
+  </div>
+
+  <script>
+  /* ============================
+     Little India Story — Sprites & Audio version
+     Save required asset files next to this HTML:
+     player.png, elephant.png, pickup1.png ... pickup6.png,
+     bgm.mp3, collect.wav, win.wav
+     ============================ */
+
+  // Canvas setup
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Config: filenames (change if your filenames differ)
+  const ASSETS = {
+    player: 'player.png',
+    elephant: 'elephant.png',
+    pickups: ['pickup1.png','pickup2.png','pickup3.png','pickup4.png','pickup5.png','pickup6.png'],
+    bgm: 'bgm.mp3',
+    sfxCollect: 'collect.wav',
+    sfxWin: 'win.wav'
+  };
+
+  // Game state
+  const state = { width: canvas.width, height: canvas.height, level:1, score:0, neededToWin:10, remaining:10, meter:0, paused:false };
+  const player = { x:120, y:260, r:20, speed:3.2, color:'#ffd6a5', vx:0, vy:0 };
+  const elephant = { x:60, y:80, r:14 };
+  let pickups = [];
+  const COLORS = ['#F26B6B','#FFD166','#06D6A0','#4CC9F0','#C77DFF','#FFB6C1'];
+
+  // Audio (Web Audio API wrapper)
+  const audioCtx = (typeof AudioContext !== 'undefined') ? new AudioContext() : null;
+  const audio = {
+    bgm: null, collect: null, win: null,
+    gainNode: null, isMuted: false, volume: 0.65, started: false
+  };
+
+  // Images container
+  const images = { player:null, elephant:null, pickups:[] };
+  let imagesLoaded = false;
+
+  // Helpers
+  function rand(min,max){ return Math.random()*(max-min)+min; }
+  function dist(a,b,c,d){ return Math.hypot(a-c,b-d); }
+
+  // Preload images (promises). If a file is missing, fallback to vector draw.
+  function loadImage(src){
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.onload = ()=>resolve(img);
+      img.onerror = ()=>reject(src);
+      img.src = src;
+    });
+  }
+
+  async function loadAllImages(){
+    const promises = [];
+    // player
+    promises.push(loadImage(ASSETS.player).then(img=>images.player = img).catch(()=>images.player = null));
+    // elephant
+    promises.push(loadImage(ASSETS.elephant).then(img=>images.elephant = img).catch(()=>images.elephant = null));
+    // pickups
+    ASSETS.pickups.forEach((p,idx)=>{
+      promises.push(loadImage(p).then(img=>images.pickups[idx]=img).catch(()=>images.pickups[idx]=null));
+    });
+    await Promise.all(promises);
+    imagesLoaded = true;
+  }
+
+  // Load audio files into buffers (safe fallback if no audioContext)
+  async function loadAudioBuffer(url){
+    if(!audioCtx) return null;
+    try{
+      const resp = await fetch(url);
+      const arr = await resp.arrayBuffer();
+      return await audioCtx.decodeAudioData(arr);
+    } catch(e){ return null; }
+  }
+
+  // Create HTMLAudioElement fallback for bgm (useful if AudioContext blocked)
+  function createAudioElement(src, loop=false){
+    try{
+      const a = new Audio(src);
+      a.loop = loop;
+      a.preload = 'auto';
+      a.volume = audio.volume;
+      return a;
+    } catch(e){ return null; }
+  }
+
+  async function prepareAudio(){
+    // Try WebAudio first
+    if(audioCtx){
+      audio.gainNode = audioCtx.createGain();
+      audio.gainNode.gain.value = audio.volume;
+      audio.gainNode.connect(audioCtx.destination);
+      // load buffers
+      const [bgmBuf, collectBuf, winBuf] = await Promise.all([
+        loadAudioBuffer(ASSETS.bgm).catch(()=>null),
+        loadAudioBuffer(ASSETS.sfxCollect).catch(()=>null),
+        loadAudioBuffer(ASSETS.sfxWin).catch(()=>null)
+      ]);
+      audio.bgm = bgmBuf;
+      audio.collect = collectBuf;
+      audio.win = winBuf;
+    } else {
+      // fallback to HTMLAudioElement for bgm and sfx
+      audio.bgmElem = createAudioElement(ASSETS.bgm, true);
+      audio.collectElem = createAudioElement(ASSETS.sfxCollect, false);
+      audio.winElem = createAudioElement(ASSETS.sfxWin, false);
+    }
+  }
+
+  // Play audio utilities
+  function playBgm(){
+    if(audio.started) return;
+    // Some browsers require resume() after user gesture
+    if(audioCtx) audioCtx.resume().catch(()=>{});
+    audio.started = true;
+    if(audioCtx && audio.bgm){
+      const src = audioCtx.createBufferSource();
+      src.buffer = audio.bgm;
+      src.loop = true;
+      src.connect(audio.gainNode);
+      src.start(0);
+      audio.bgmSource = src;
+    } else if(audio.bgmElem){
+      audio.bgmElem.volume = audio.volume;
+      audio.bgmElem.play().catch(()=>{});
+    }
+  }
+  function stopBgm(){
+    if(!audio.started) return;
+    audio.started = false;
+    if(audioCtx && audio.bgmSource){
+      try{ audio.bgmSource.stop(); } catch(e){}
+      audio.bgmSource = null;
+    } else if(audio.bgmElem){
+      audio.bgmElem.pause();
+      audio.bgmElem.currentTime = 0;
+    }
+  }
+  function setVolume(v){
+    audio.volume = v;
+    if(audioCtx && audio.gainNode) audio.gainNode.gain.value = v;
+    if(audio.bgmElem) audio.bgmElem.volume = v;
+    if(audio.collectElem) audio.collectElem.volume = v;
+    if(audio.winElem) audio.winElem.volume = v;
+  }
+  function playOneShot(buffer){
+    if(audio.isMuted) return;
+    if(audioCtx && buffer){
+      const s = audioCtx.createBufferSource();
+      s.buffer = buffer;
+      s.connect(audio.gainNode);
+      s.start(0);
+    } else {
+      // fallback to HTMLAudioElement clones
+      if(!audio.collectElem) return;
+      const el = audio.collectElem.cloneNode();
+      el.volume = audio.volume;
+      el.play().catch(()=>{});
+    }
+  }
+
+  // Spawn pickups
+  function spawnPickups(n){
+    pickups = [];
+    for(let i=0;i<n;i++){
+      const r = 10;
+      let px,py,ok=false,tries=0;
+      while(!ok && tries<80){
+        px = rand(60, state.width-60);
+        py = rand(60, state.height-60);
+        if(dist(px,py,player.x,player.y) > 80) ok = true;
+        tries++;
+      }
+      pickups.push({
+        x: px, y: py, r,
+        color: COLORS[Math.floor(Math.random()*COLORS.length)],
+        spriteIndex: Math.floor(Math.random()*ASSETS.pickups.length),
+        collected:false
+      });
+    }
+    state.remaining = pickups.length;
+    document.getElementById('remaining').textContent = state.remaining;
+  }
+
+  // UI
+  function updateUI(){
+    document.getElementById('score').textContent = state.score;
+    document.getElementById('level').textContent = state.level;
+    document.getElementById('remaining').textContent = state.remaining;
+    document.getElementById('meterFill').style.width = state.meter + '%';
+    document.getElementById('btnNext').disabled = state.meter < 100;
+    document.getElementById('btnNext').style.opacity = state.meter < 100 ? 0.6 : 1;
+  }
+
+  // Particles
+  const particles = [];
+  function spawnTinyBurst(x,y,color){
+    for(let i=0;i<18;i++){
+      particles.push({ x,y, vx: rand(-2.4,2.4), vy: rand(-4,-0.5), life: rand(30,70), col: color, r: rand(1.5,3.6) });
+    }
+  }
+
+  // Win
+  let winTimer = 0;
+  function celebrateWin(){
+    winTimer = 120;
+    state.score += 50;
+    updateUI();
+    if(audio.win) playOneShot(audio.win);
+    else if(audio.winElem){ const el = audio.winElem.cloneNode(); el.volume = audio.volume; el.play().catch(()=>{}); }
+  }
+
+  // Draw functions (use sprites if available)
+  function draw(){
+    ctx.clearRect(0,0,state.width,state.height);
+    const g = ctx.createLinearGradient(0,0,0,state.height);
+    g.addColorStop(0,'#fffefc'); g.addColorStop(1,'#fff7f4');
+    ctx.fillStyle = g; ctx.fillRect(0,0,state.width,state.height);
+
+    const fade = 1 - (state.meter/120);
+    drawHouses(fade);
+
+    // pickups (sprite or circle)
+    pickups.forEach((p,idx)=>{
+      if(p.collected) return;
+      if(imagesLoaded && images.pickups[p.spriteIndex]){
+        const img = images.pickups[p.spriteIndex];
+        const size = 36;
+        ctx.drawImage(img, p.x - size/2, p.y - size/2, size, size);
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(p.x+4, p.y+8, p.r*1.1, p.r*0.6, 0,0, Math.PI*2);
+        ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fillStyle = p.color; ctx.fill();
+      }
+    });
+
+    // elephant (sprite fallback)
+    if(imagesLoaded && images.elephant){
+      const img = images.elephant;
+      const w = 56, h = 56;
+      ctx.drawImage(img, elephant.x - w/2, elephant.y - h/2, w, h);
+    } else {
+      ctx.save(); ctx.translate(elephant.x, elephant.y);
+      ctx.beginPath(); ctx.fillStyle = '#FFF1E6'; ctx.ellipse(0,0,elephant.r*1.6,elephant.r*1.2,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.fillStyle = '#FFD9C7'; ctx.arc(-8,-2,elephant.r*0.9,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.fillStyle = '#222'; ctx.arc(4,-4,2,0,Math.PI*2); ctx.fill(); ctx.restore();
+    }
+
+    // player (sprite fallback)
+    if(imagesLoaded && images.player){
+      const img = images.player;
+      const size = 64;
+      ctx.drawImage(img, player.x - size/2, player.y - size/2, size, size);
+    } else {
+      ctx.save();
+      ctx.translate(player.x, player.y);
+      ctx.beginPath(); ctx.ellipse(4, player.r+8, player.r*1.2, player.r*0.5, 0,0,Math.PI*2); ctx.fillStyle = 'rgba(0,0,0,0.06)'; ctx.fill();
+      ctx.beginPath(); ctx.arc(0,0,player.r,0,Math.PI*2); ctx.fillStyle = player.color; ctx.fill();
+      ctx.beginPath(); ctx.fillStyle = '#C93E6B'; ctx.arc(0, -4, 3,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-player.r+2, player.r-2); ctx.quadraticCurveTo(0, player.r+12, player.r-6, player.r-4); ctx.fillStyle = '#6a9fd8'; ctx.fill();
+      ctx.beginPath(); ctx.fillStyle = '#111'; ctx.arc(-6,-2,2,0,Math.PI*2); ctx.arc(6,-2,2,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      ctx.beginPath(); ctx.fillStyle = p.col; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+      p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life--;
+      if(p.life <= 0) particles.splice(i,1);
+    }
+
+    // HUD win
+    if(winTimer > 0){
+      ctx.save();
+      ctx.fillStyle = 'rgba(20,30,60,0.08)';
+      ctx.fillRect(0, state.height/2 - 70, state.width, 140);
+      ctx.fillStyle = '#173f5f'; ctx.font = '26px system-ui, Noto Sans KR'; ctx.textAlign = 'center';
+      ctx.fillText('마을이 다시 빛나요! 🎉', state.width/2, state.height/2 - 6);
+      ctx.font = '16px system-ui, Noto Sans KR';
+      ctx.fillText('축하합니다 — 색 가루를 모두 모았어요', state.width/2, state.height/2 + 20);
+      ctx.restore();
+    }
+  }
+
+  // small helpers for houses (same as before)
+  function drawHouses(fade){
+    const baseX = 40; const gap = 130;
+    for(let i=0;i<6;i++){
+      const x = baseX + i*gap; const y = state.height - 80;
+      const colorful = (state.meter/100);
+      const c1 = blend('#e9e9ea', '#ffd6a5', colorful*0.8);
+      const c2 = blend('#dfdfdf', '#6a9fd8', colorful*0.8);
+      ctx.fillStyle = c1; roundRect(ctx, x, y-50, 96, 50, 8); ctx.fill();
+      ctx.fillStyle = c2; ctx.beginPath(); ctx.moveTo(x-8,y-50); ctx.lineTo(x+48,y-90); ctx.lineTo(x+104,y-50); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.06)'; roundRect(ctx, x+36, y-24, 22, 24, 6); ctx.fill();
+    }
+  }
+  function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function blend(a,b,t){ const ah = hexToRgb(a), bh = hexToRgb(b); const r = Math.round(ah.r + (bh.r - ah.r)*t); const g = Math.round(ah.g + (bh.g - ah.g)*t); const bl = Math.round(ah.b + (bh.b - ah.b)*t); return `rgb(${r},${g},${bl})`; }
+  function hexToRgb(hex){ hex = hex.replace('#',''); if(hex.length===3) hex = hex.split('').map(ch=>ch+ch).join(''); const num = parseInt(hex,16); return {r:(num>>16)&255, g:(num>>8)&255, b:num&255}; }
+
+  // game update
+  let last = performance.now();
+  function loop(now=0){
+    if(state.paused) return;
+    const dt = Math.min(40, now - last);
+    update(dt/16);
+    draw();
+    last = now;
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    player.x += player.vx * player.speed * dt;
+    player.y += player.vy * player.speed * dt;
+    player.x = Math.max(player.r+8, Math.min(state.width - player.r - 8, player.x));
+    player.y = Math.max(player.r+8, Math.min(state.height - player.r - 8, player.y));
+    elephant.x += (player.x - elephant.x) * 0.03;
+    elephant.y += (player.y - 80 - elephant.y) * 0.03;
+
+    pickups.forEach((p,idx)=> {
+      if(!p.collected && dist(player.x,player.y,p.x,p.y) < player.r + p.r - 2){
+        collectPickup(idx);
+      }
+    });
+
+    if(winTimer > 0) winTimer--;
+    if(Math.random() < 0.06) spawnTinyBurst(rand(60,state.width-60), rand(60,state.height-140), COLORS[Math.floor(Math.random()*COLORS.length)]);
+  }
+
+  function collectPickup(i){
+    if(pickups[i].collected) return;
+    pickups[i].collected = true;
+    state.score += 10;
+    state.meter = Math.min(100, state.meter + Math.floor(100/state.neededToWin));
+    state.remaining = pickups.filter(p=>!p.collected).length;
+    updateUI();
+    spawnTinyBurst(pickups[i].x, pickups[i].y, pickups[i].color);
+    // play collect sound
+    if(audio.collect) playOneShot(audio.collect);
+    else if(audio.collectElem){ const el = audio.collectElem.cloneNode(); el.volume = audio.volume; el.play().catch(()=>{}); }
+    if(state.meter >= 100) celebrateWin();
+  }
+
+  // input handling
+  const keys = {};
+  document.addEventListener('keydown', e=>{
+    if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') keys.left = true;
+    if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') keys.right = true;
+    if(e.key==='ArrowUp'||e.key==='w'||e.key==='W') keys.up = true;
+    if(e.key==='ArrowDown'||e.key==='s'||e.key==='S') keys.down = true;
+    updatePlayerVelocity();
+  });
+  document.addEventListener('keyup', e=>{
+    if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A') keys.left = false;
+    if(e.key==='ArrowRight'||e.key==='d'||e.key==='D') keys.right = false;
+    if(e.key==='ArrowUp'||e.key==='w'||e.key==='W') keys.up = false;
+    if(e.key==='ArrowDown'||e.key==='s'||e.key==='S') keys.down = false;
+    updatePlayerVelocity();
+  });
+  function updatePlayerVelocity(){ player.vx = 0; player.vy = 0; if(keys.left) player.vx = -1; if(keys.right) player.vx = 1; if(keys.up) player.vy = -1; if(keys.down) player.vy = 1; if(player.vx !==0 && player.vy !==0){ player.vx *= 0.7071; player.vy *= 0.7071; } }
+
+  // touch controls
+  document.querySelectorAll('.tbtn').forEach(b=>{
+    b.addEventListener('touchstart', (ev)=>{ ev.preventDefault(); const dir=b.dataset.dir; if(dir==='up') keys.up=true; if(dir==='down') keys.down=true; if(dir==='left') keys.left=true; if(dir==='right') keys.right=true; updatePlayerVelocity(); });
+    b.addEventListener('touchend', (ev)=>{ ev.preventDefault(); const dir=b.dataset.dir; if(dir==='up') keys.up=false; if(dir==='down') keys.down=false; if(dir==='left') keys.left=false; if(dir==='right') keys.right=false; updatePlayerVelocity(); });
+  });
+
+  // UI buttons
+  document.getElementById('btnRestart').addEventListener('click', ()=>{
+    state.meter=0; state.score=0; state.level=1; state.neededToWin=10; player.x=120; player.y=state.height/2; spawnPickups(state.neededToWin); updateUI();
+  });
+
+  document.getElementById('btnNext').addEventListener('click', ()=>{
+    if(state.meter < 100) return;
+    state.level++; state.neededToWin = Math.min(18, 10 + state.level*2); state.meter=0; player.speed = Math.min(5.2, player.speed+0.2); player.x=80; player.y = state.height/2; spawnPickups(state.neededToWin); updateUI();
+  });
+
+  // audio UI
+  document.getElementById('btnStartBgm').addEventListener('click', async ()=>{
+    // start audio on user gesture
+    if(!audio.started){
+      try{
+        await (audioCtx ? audioCtx.resume() : Promise.resolve());
+      }catch(e){}
+      playBgm();
+      document.getElementById('btnStartBgm').textContent = '중지 ■';
+    } else {
+      stopBgm();
+      document.getElementById('btnStartBgm').textContent = '시작 ▶';
+    }
+  });
+
+  document.getElementById('btnMute').addEventListener('click', ()=>{
+    audio.isMuted = !audio.isMuted;
+    document.getElementById('btnMute').textContent = audio.isMuted ? '음소거 해제' : '음소거';
+    setVolume(audio.isMuted ? 0 : parseFloat(document.getElementById('volume').value));
+  });
+
+  document.getElementById('volume').addEventListener('input', (e)=>{
+    const v = parseFloat(e.target.value);
+    setVolume(v);
+  });
+
+  // responsive scaling
+  function resizeCanvas(){ const container = canvas.parentElement; const maxW = container.clientWidth - 20; const scale = Math.min(1, maxW / canvas.width); canvas.style.width = Math.round(canvas.width * scale) + 'px'; canvas.style.height = Math.round(canvas.height * scale) + 'px'; }
+  window.addEventListener('resize', resizeCanvas);
+
+  // init
+  async function init(){
+    // try to load images & audio in background (no blocking)
+    loadAllImages().catch(()=>{ imagesLoaded = true; });
+    prepareAudio().catch(()=>{});
+    state.level = 1; state.score = 0; state.neededToWin = 10; state.meter = 0; player.x = 120; player.y = canvas.height/2;
+    spawnPickups(state.neededToWin);
+    updateUI();
+    resizeCanvas();
+    last = performance.now();
+    loop();
+  }
+
+  // expose debug
+  window.__game = { state, player, pickups };
+
+  init();
+  </script>
+</body>
+</html>
